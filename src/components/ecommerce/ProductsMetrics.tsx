@@ -87,7 +87,6 @@ export const ProductsMetrics = () => {
       { id: 4, key: "sinStock", label: "Sin stock", value: sinStock },
     ];
   }, [products]);
-  console.log("metrics", metrics);
 
   // if (isPending) return <p className="text-gray-500 dark:text-gray-400">Cargando métricas...</p>;
   if (error) return <p className="text-red-500">Error al cargar productos.</p>;
