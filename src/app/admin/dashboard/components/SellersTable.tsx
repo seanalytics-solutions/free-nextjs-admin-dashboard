@@ -3,9 +3,20 @@
 import { Eye, Trash2, Check, X, Search, Users, UserPlus } from "lucide-react";
 import { ImageWithFallback } from "./ImageWithFallback";
 import { useState } from "react";
+import {
+  acceptSellerRequest,
+  rejectSellerRequest,
+  deleteSeller,
+  getSellers,
+  getSellerRequests,
+} from "@/actions/sellers";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Vendedor {
-  id: number;
+  uniqueId: string;
+  originalId: number;
+  source: "user" | "request";
   nombre: string;
   apellido: string;
   correo: string;
@@ -15,76 +26,136 @@ interface Vendedor {
   estado: "activo" | "pendiente";
 }
 
-const vendedoresData: Vendedor[] = [
-  {
-    id: 1,
-    nombre: "Carlos",
-    apellido: "Rodríguez",
-    correo: "carlos.rodriguez@empresa.com",
-    rfc: "RODC850315HDF",
-    imagen: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
-    rol: "Vendedor",
-    estado: "activo",
-  },
-  {
-    id: 2,
-    nombre: "María",
-    apellido: "González",
-    correo: "maria.gonzalez@empresa.com",
-    rfc: "GOMA901020MDF",
-    imagen: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
-    rol: "Vendedor",
-    estado: "activo",
-  },
-  {
-    id: 3,
-    nombre: "José",
-    apellido: "Martínez",
-    correo: "jose.martinez@empresa.com",
-    rfc: "MAJE920815HDF",
-    imagen: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400",
-    rol: "Vendedor",
-    estado: "activo",
-  },
-  {
-    id: 4,
-    nombre: "Ana",
-    apellido: "López",
-    correo: "ana.lopez@empresa.com",
-    rfc: "LOPA880625MDF",
-    imagen: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400",
-    rol: "Usuario",
-    estado: "pendiente",
-  },
-  {
-    id: 5,
-    nombre: "Luis",
-    apellido: "Hernández",
-    correo: "luis.hernandez@empresa.com",
-    rfc: "HERL950410HDF",
-    imagen: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-    rol: "Usuario",
-    estado: "pendiente",
-  },
-  {
-    id: 6,
-    nombre: "Patricia",
-    apellido: "Sánchez",
-    correo: "patricia.sanchez@empresa.com",
-    rfc: "SAMP870920MDF",
-    imagen: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400",
-    rol: "Usuario",
-    estado: "pendiente",
-  },
-];
-
 export function SellersTable() {
-  const [vendedores, setVendedores] = useState<Vendedor[]>(vendedoresData);
+  const queryClient = useQueryClient();
   const [tabActiva, setTabActiva] = useState<"activos" | "solicitudes">("activos");
   const [busqueda, setBusqueda] = useState("");
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id?: number }>({
+  
+  // Modal state handling both delete and reject actions
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    id: string | null;
+    action: "delete" | "reject" | null;
+  }>({
     open: false,
+    id: null,
+    action: null,
   });
+
+  // === DATA FETCHING ===
+  const { data: vendedores = [], isLoading } = useQuery({
+    queryKey: ["sellers-data"],
+    queryFn: async () => {
+      const [sellers, requests] = await Promise.all([
+        getSellers(),
+        getSellerRequests(),
+      ]);
+
+      const mappedSellers: Vendedor[] = sellers.map((s) => ({
+        uniqueId: `user-${s.id}`,
+        originalId: s.id,
+        source: "user",
+        nombre: s.nombre || "",
+        apellido: s.apellido || "",
+        correo: s.correo,
+        rfc: s.profile?.RFC || "N/A",
+        imagen:
+          s.profile?.imagen ||
+          "https://res.cloudinary.com/dgpd2ljyh/image/upload/v1748920792/default_nlbjlp.jpg",
+        rol: "Vendedor",
+        estado: "activo",
+      }));
+
+      const mappedRequests: Vendedor[] = requests.map((r) => ({
+        uniqueId: `req-${r.id}`,
+        originalId: r.id,
+        source: "request",
+        nombre: r.usuario?.nombre || r.nombre_tienda || "Desconocido",
+        apellido: r.usuario?.apellido || "",
+        correo: r.email || r.usuario?.correo || "",
+        rfc: r.rfc || "N/A",
+        imagen:
+          r.usuario?.profile?.imagen ||
+          r.img_uri ||
+          "https://res.cloudinary.com/dgpd2ljyh/image/upload/v1748920792/default_nlbjlp.jpg",
+        rol: "Usuario",
+        estado: "pendiente",
+      }));
+
+      return [...mappedSellers, ...mappedRequests];
+    },
+  });
+
+  // === MUTATIONS ===
+  const acceptMutation = useMutation({
+    mutationFn: async (originalId: number) => {
+      const res = await acceptSellerRequest(originalId);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Solicitud aceptada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["sellers-data"] });
+    },
+    onError: () => {
+      toast.error("Error al aceptar la solicitud");
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (originalId: number) => {
+      const res = await rejectSellerRequest(originalId);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Solicitud rechazada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["sellers-data"] });
+      setConfirmModal({ open: false, id: null, action: null });
+    },
+    onError: () => {
+      toast.error("Error al rechazar la solicitud");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (originalId: number) => {
+      const res = await deleteSeller(originalId);
+      if (!res.success) throw new Error(res.error);
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Vendedor eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ["sellers-data"] });
+      setConfirmModal({ open: false, id: null, action: null });
+    },
+    onError: () => {
+      toast.error("Error al eliminar el vendedor");
+    },
+  });
+
+  // === HANDLERS ===
+  const handleConfirmAction = () => {
+    if (!confirmModal.id || !confirmModal.action) return;
+
+    const item = vendedores.find((v) => v.uniqueId === confirmModal.id);
+    if (!item) return;
+
+    if (confirmModal.action === "delete") {
+      deleteMutation.mutate(item.originalId);
+    } else if (confirmModal.action === "reject") {
+      rejectMutation.mutate(item.originalId);
+    }
+  };
+
+  const handleAceptarSolicitud = (uniqueId: string) => {
+    const item = vendedores.find((v) => v.uniqueId === uniqueId);
+    if (item) acceptMutation.mutate(item.originalId);
+  };
+
+  const handleVerVendedor = (v: Vendedor) => {
+    alert(`Detalles de ${v.nombre}`);
+  };
 
   // === FILTRO ===
   const filtrarVendedores = (lista: Vendedor[]) => {
@@ -108,29 +179,12 @@ export function SellersTable() {
     vendedores.filter((v) => v.estado === "pendiente")
   );
 
-  // === ACCIONES ===
-  const handleEliminarConfirmado = () => {
-    if (!deleteModal.id) return;
-    setVendedores((prev) => prev.filter((v) => v.id !== deleteModal.id));
-    setDeleteModal({ open: false });
-  };
-
-  const handleAceptarSolicitud = (id: number) => {
-    setVendedores((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, estado: "activo", rol: "Vendedor" } : v))
-    );
-  };
-
-  const handleRechazarSolicitud = (id: number) => {
-    setVendedores((prev) => prev.filter((v) => v.id !== id));
-  };
-
-  const handleVerVendedor = (v: Vendedor) => {
-    alert(`Detalles de ${v.nombre}`);
-  };
+  if (isLoading) {
+    return <div className="p-10 text-center text-gray-500">Cargando datos...</div>;
+  }
 
   return (
-    <div   className="
+    <div className="
               relative rounded-2xl p-6 shadow-lg hover:shadow-xl
               transition-all duration-300 overflow-hidden border 
               bg-white border-slate-200
@@ -236,7 +290,7 @@ export function SellersTable() {
             <tbody>
               {activos.map((v) => (
                 <tr
-                  key={v.id}
+                  key={v.uniqueId}
                   className="border-b border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
                 >
                   <td className="px-6 py-4">
@@ -280,7 +334,7 @@ export function SellersTable() {
 
                       {/* ELIMINAR */}
                       <button
-                        onClick={() => setDeleteModal({ open: true, id: v.id })}
+                        onClick={() => setConfirmModal({ open: true, id: v.uniqueId, action: "delete" })}
                         className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors flex items-center gap-1.5"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -327,7 +381,7 @@ export function SellersTable() {
             <tbody>
               {pendientes.map((v) => (
                 <tr
-                  key={v.id}
+                  key={v.uniqueId}
                   className="border-b border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
                 >
                   <td className="px-6 py-4">
@@ -360,7 +414,7 @@ export function SellersTable() {
                     <div className="flex items-center justify-center gap-2">
                       {/* ACEPTAR */}
                       <button
-                        onClick={() => handleAceptarSolicitud(v.id)}
+                        onClick={() => handleAceptarSolicitud(v.uniqueId)}
                         className="px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-lg transition-colors flex items-center gap-1.5"
                       >
                         <Check className="w-4 h-4" />
@@ -369,7 +423,7 @@ export function SellersTable() {
 
                       {/* RECHAZAR */}
                       <button
-                        onClick={() => handleRechazarSolicitud(v.id)}
+                        onClick={() => setConfirmModal({ open: true, id: v.uniqueId, action: "reject" })}
                         className="px-3 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors flex items-center gap-1.5"
                       >
                         <X className="w-4 h-4" />
@@ -393,31 +447,37 @@ export function SellersTable() {
       )}
 
       {/* ============ MODAL DE CONFIRMACIÓN ============ */}
-      {deleteModal.open && (
+      {confirmModal.open && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999]">
           <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 w-full max-w-sm shadow-xl border border-gray-200 dark:border-neutral-700 animate-fadeIn">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Confirmar eliminación
+              {confirmModal.action === "delete" ? "Confirmar eliminación" : "Confirmar rechazo"}
             </h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              ¿Seguro que deseas eliminar este vendedor? Esta acción no se puede
-              deshacer.
+              {confirmModal.action === "delete"
+                ? "¿Seguro que deseas eliminar este vendedor? Esta acción no se puede deshacer."
+                : "¿Seguro que deseas rechazar esta solicitud? Esta acción no se puede deshacer."}
             </p>
 
             <div className="flex justify-end gap-3 mt-6">
               <button
-                onClick={() => setDeleteModal({ open: false })}
+                onClick={() => setConfirmModal({ open: false, id: null, action: null })}
                 className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-lg transition"
               >
                 Cancelar
               </button>
 
               <button
-                onClick={handleEliminarConfirmado}
+                onClick={handleConfirmAction}
+                disabled={deleteMutation.isPending || rejectMutation.isPending}
                 className="px-4 py-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" />
-                Eliminar
+                {(deleteMutation.isPending || rejectMutation.isPending) ? (
+                  <span className="animate-spin">...</span>
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                {confirmModal.action === "delete" ? "Eliminar" : "Rechazar"}
               </button>
             </div>
           </div>

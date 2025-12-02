@@ -34,6 +34,11 @@ const adminNavItems: NavItem[] = [
     name: "Admin",
     path: "/dashboard/admin",
   },
+  {
+    icon: <BoxIconLine />,
+    name: "Guias",
+    path: "/admin/dashboard/guias",
+  },
 ];
 
 const othersItems: NavItem[] = [
