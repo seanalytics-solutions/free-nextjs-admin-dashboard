@@ -1,56 +1,114 @@
 "use client";
-import React from "react";
-import Badge from "../ui/badge/Badge";
-import { ArrowDownIcon, ArrowUpIcon, BoxIconLine, GroupIcon } from "@/icons";
+
+import { getCustomersCount, getOrdersCount } from "@/actions/product";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BoxIconLine,
+  GroupIcon,
+
+} from "@/icons";
+import { useQueries } from "@tanstack/react-query";
+import { Loader2Icon } from "lucide-react";
+import NumberFlow from '@number-flow/react'
 
 export const EcommerceMetrics = () => {
+  const [customersCount, ordersCount] = useQueries({
+    queries: [
+      {
+        queryKey: ["customers-count"],
+        queryFn: () => getCustomersCount(),
+        staleTime: 30 * 1000, // 30 seconds
+      },
+      {
+        queryKey: ["orders-count"],
+        queryFn: () => getOrdersCount(),
+        staleTime: 30 * 1000, // 30 seconds
+      }
+    ],
+  });
+  console.log(customersCount.data);
+  const isLoading =
+    customersCount.isLoading || ordersCount.isLoading;
+  const isError = customersCount.isError || ordersCount.isError;
+
+  const cards = [
+    {
+      title: "Clientes",
+      value: customersCount.data ?? 0,
+      icon: GroupIcon,
+      gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+      badge: {
+        color: "success",
+        icon: ArrowUpIcon,
+        value: "11.01%",
+      },
+      textColor: "text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      title: "Pedidos",
+      value: ordersCount.data ?? 0,
+      icon: BoxIconLine,
+      gradient: "from-blue-400 via-indigo-500 to-violet-600",
+      badge: {
+        color: "error",
+        icon: ArrowDownIcon,
+        value: "9.05%",
+      },
+      textColor: "text-indigo-600 dark:text-indigo-400",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
-      {/* <!-- Metric Item Start --> */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-        <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
-          <GroupIcon className="text-gray-800 size-6 dark:text-white/90" />
-        </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      {cards.map((card, index) => {
+        const Icon = card.icon;
 
-        <div className="flex items-end justify-between mt-5">
-          <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Customers
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
-            </h4>
+        return (
+          <div
+            key={index}
+            className="
+              relative rounded-2xl p-6 shadow-lg hover:shadow-xl
+              transition-all duration-300 overflow-hidden border
+
+              bg-white border-gray-200  
+              dark:bg-white/3 dark:border-gray-800
+            "
+          >
+            <div className="relative z-10">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    {card.title}
+                  </p>
+
+                  <NumberFlow className={`text-4xl font-semibold mt-1 ${card.textColor}`} value={card.value ?? 0} />
+
+               
+                </div>
+
+                <div
+                  className={`
+                    bg-linear-to-br ${card.gradient} flex items-center justify-center p-3 rounded-xl shadow-lg
+                    dark:opacity-90
+                  `}
+                >
+                  {isLoading ? <Loader2Icon className="w-7 h-7 text-white animate-spin" /> : <Icon className="size-7 pl-0.5 pt-0.5 text-white" />}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <div
+                  className={`
+                    w-16 h-[3px] bg-linear-to-r ${card.gradient} rounded-full 
+                    dark:opacity-90
+                  `}
+                />
+              </div>
+            </div>
           </div>
-          <Badge color="success">
-            <ArrowUpIcon />
-            11.01%
-          </Badge>
-        </div>
-      </div>
-      {/* <!-- Metric Item End --> */}
-
-      {/* <!-- Metric Item Start --> */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-        <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
-          <BoxIconLine className="text-gray-800 dark:text-white/90" />
-        </div>
-        <div className="flex items-end justify-between mt-5">
-          <div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Orders
-            </span>
-            <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              5,359
-            </h4>
-          </div>
-
-          <Badge color="error">
-            <ArrowDownIcon className="text-error-500" />
-            9.05%
-          </Badge>
-        </div>
-      </div>
-      {/* <!-- Metric Item End --> */}
+        );
+      })}
     </div>
   );
 };

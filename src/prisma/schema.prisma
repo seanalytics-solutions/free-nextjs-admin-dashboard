@@ -1,0 +1,801 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+model User {
+  id         Int    @id @default(autoincrement())
+  nombre     String
+  correo     String @unique
+  contrasena String
+  rol        String @default("usuario")
+
+  @@map("user")
+}
+
+model Usuarios {
+  id                 Int                 @id @default(autoincrement())
+  nombre             String?
+  apellido           String?
+  correo             String              @unique
+  password           String              @map("contrasena")
+  confirmado         Boolean             @default(false)
+  token              String?
+  tokenCreatedAt     DateTime?           @default(now()) @map("token_created_at")
+  rol                String              @default("usuario")
+  profile            Profile?
+  giftedCoupons      GiftedCoupon[]
+  solicitudVendedors SolicitudVendedor[]
+  products           Product[]
+
+  @@map("usuarios")
+}
+
+model deletion_reason {
+  id              Int      @id @default(autoincrement())
+  selected_reason String
+  other_reason    String?
+  created_at      DateTime @default(now())
+  profileId       Int
+  profile         Profile  @relation(fields: [profileId], references: [id])
+
+  @@map("deletion_reasons")
+}
+
+model categories {
+  id       Int       @id @default(autoincrement())
+  name     String    @db.VarChar(200)
+  products Product[]
+}
+
+model Profile {
+  id                 Int       @id @default(autoincrement())
+  nombre             String    @db.VarChar(30)
+  apellido           String    @db.VarChar(30)
+  numero             String?   @db.VarChar(10)
+  estado             String
+  ciudad             String
+  fraccionamiento    String
+  calle              String
+  codigoPostal       String    @db.VarChar(5)
+  imagen             String    @default("https://res.cloudinary.com/dgpd2ljyh/image/upload/v1748920792/default_nlbjlp.jpg")
+  stripeCustomerId   String?
+  RFC                String?
+  usuarioId          Int?      @unique @map("usuario_id")
+  Usuarios           Usuarios? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  productosFavoritos Product[] @relation("Favoritos")
+
+  facturas        Factura[]
+  guias           Guia[]
+  transactions    Transaction[]
+  favoritos       Favorito[]
+  complaints      Complaint[]
+  carrito         Carrito[]
+  direcciones     Misdireccione[]
+  cards           Card[]
+  reviews         Review[]
+  pedidos         Pedido[]
+  deletionReasons deletion_reason[]
+}
+
+enum ProductEstadoEnum {
+  activo
+  inactivo
+  agotado
+  pausado
+}
+
+model Product {
+  id          Int                @id @default(autoincrement())
+  nombre      String             @db.VarChar(60)
+  descripcion String             @db.VarChar(120)
+  categoria   String?
+  altura      Float?             @db.Real
+  largo       Float?             @db.Real
+  ancho       Float?             @db.Real
+  peso        Float?             @db.Real
+  precio      Decimal            @db.Decimal(10, 2)
+  inventario  Int                @default(0)
+  color       String             @db.VarChar(40)
+  marca       String             @db.VarChar(60)
+  slug        String             @db.VarChar(120)
+  vendedor    String             @db.VarChar(80)
+  real_status ProductEstadoEnum? @default(activo) @map("real_status")
+  estado      Boolean            @default(true)
+  vendidos    Int                @default(0)
+  sku         String             @db.VarChar(60)
+  idPerfil    Int?
+  id_category Int?
+  category    categories?        @relation(fields: [id_category], references: [id])
+  sellerId    Int?
+  seller      Usuarios?          @relation(fields: [sellerId], references: [id])
+
+  favoritoDe          Profile[]            @relation("Favoritos")
+  images              ProductImage[]
+  favoritos           Favorito[]
+  carrito             Carrito[]
+  reviews             Review[]
+  createdCoupons      CreatedCoupon[]
+  pedidoProductos     PedidoProducto[]
+  transactionContents TransactionContent[]
+  complaints          Complaint[] // <-- Agregar esta línea
+
+  @@map("productos")
+}
+
+enum CuponesTipoEnum {
+  porcentaje
+  monto_fijo
+}
+
+enum CuponesEstadoEnum {
+  activo
+  inactivo
+  expirado
+}
+
+model Cupon {
+  id                   Int               @id @default(autoincrement())
+  codigo               String            @unique @db.VarChar(50)
+  descripcion          String            @db.VarChar(200)
+  tipo                 CuponesTipoEnum   @default(porcentaje)
+  valor                Decimal           @db.Decimal(10, 2)
+  montoMinimo          Decimal           @default(0) @map("monto_minimo") @db.Decimal(10, 2)
+  descuentoMaximo      Decimal?          @map("descuento_maximo") @db.Decimal(10, 2)
+  usosMaximos          Int               @default(1) @map("usos_maximos")
+  usosActuales         Int               @default(0) @map("usos_actuales")
+  fechaExpiracion      DateTime?         @map("fecha_expiracion")
+  estado               CuponesEstadoEnum @default(activo)
+  fechaCreacion        DateTime          @default(now()) @map("fecha_creacion")
+  fechaActualizacion   DateTime          @default(now()) @updatedAt @map("fecha_actualizacion")
+  usuarioCreadorId     Int?              @map("usuario_creador_id")
+  usoUnicoPorUsuario   Boolean           @default(false) @map("uso_unico_por_usuario")
+  categoriasAplicables Json?             @map("categorias_aplicables")
+  productosAplicables  Json?             @map("productos_aplicables")
+  giftedCoupons        GiftedCoupon[]
+
+  @@map("cupones")
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  url       String
+  orden     Int     @default(0)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+model Pedido {
+  id                   Int                   @id @default(autoincrement())
+  total                Decimal
+  status               String
+  fecha                DateTime              @default(now())
+  profileId            Int
+  profile              Profile               @relation(fields: [profileId], references: [id])
+  direccionId          Int?
+  direccion            Misdireccione?        @relation(fields: [direccionId], references: [id])
+  estatus_pago         String?
+  calle                String?
+  numero_int           String?
+  numero_exterior      String?
+  cp                   String?
+  ciudad               String?
+  nombre               String?
+  last4                String?
+  brand                String?
+  productos            PedidoProducto[]
+  complaints           Complaint[]
+  historialAsignacions HistorialAsignacion[]
+  factura              Factura?
+
+  @@map("pedido")
+}
+
+model PedidoProducto {
+  id         Int     @id @default(autoincrement())
+  cantidad   Int
+  productoId Int
+  producto   Product @relation(fields: [productoId], references: [id])
+  pedidoId   Int
+  pedido     Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  n_guia     String?
+
+  complaints Complaint[] @relation("complaint_products")
+
+  @@map("pedido_producto")
+}
+
+model Misdireccione {
+  id                      Int     @id @default(autoincrement())
+  nombre                  String  @db.VarChar(100)
+  calle                   String  @db.VarChar(100)
+  colonia_fraccionamiento String  @db.VarChar(100)
+  numero_interior         Int?
+  numero_exterior         Int?
+  numero_celular          String  @db.VarChar(100)
+  codigo_postal           String  @db.VarChar(5)
+  estado                  String  @db.VarChar(50)
+  municipio               String  @db.VarChar(100)
+  mas_info                String? @db.VarChar(100)
+
+  usuarioId Int?     @map("usuario_id")
+  usuario   Profile? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  pedidos Pedido[]
+
+  @@map("misdireccione")
+}
+
+model Transaction {
+  id             Int      @id @default(autoincrement())
+  total          Decimal
+  diaTransaccion DateTime @default(now())
+  profileId      Int
+  profile        Profile  @relation(fields: [profileId], references: [id])
+
+  contenidos TransactionContent[]
+}
+
+model TransactionContent {
+  id            Int          @id @default(autoincrement())
+  precio        Decimal
+  cantidad      Int
+  productoId    Int?
+  producto      Product?     @relation(fields: [productoId], references: [id])
+  transactionId Int?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int      @default(5)
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  images ReviewImage[]
+
+  @@map("reviews")
+}
+
+model ReviewImage {
+  id       Int    @id @default(autoincrement())
+  url      String
+  orden    Int    @default(0)
+  reviewId Int
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_images")
+}
+
+model Favorito {
+  id            Int      @id @default(autoincrement())
+  fechaAgregado DateTime @default(now()) @map("fecha_agregado")
+
+  profileId Int?     @map("usuarioId")
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  productoId Int?
+  producto   Product? @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@map("favorito")
+}
+
+model Carrito {
+  id              Int     @id @default(autoincrement())
+  cantidad        Int
+  precio_unitario Decimal @db.Decimal(10, 2)
+  activo          Boolean
+
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  productoId Int?
+  producto   Product? @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@map("carrito")
+}
+
+model Factura {
+  id                Int      @id @default(autoincrement())
+  numero_factura    String   @unique
+  precio            Decimal  @default(0.0) @db.Decimal(10, 2)
+  sucursal          String
+  status            String
+  productos         String
+  fecha_creacion    DateTime @default(now()) @db.Date
+  fecha_vencimiento DateTime @db.Date
+
+  profileId Int?
+  profile   Profile? @relation(fields: [profileId], references: [id])
+
+  pedidoId Int?    @unique @map("pedido_id") // @unique para relación 1:1
+  pedido   Pedido? @relation(fields: [pedidoId], references: [id])
+
+  @@map("facturas")
+}
+
+model Complaint {
+  id          Int      @id @default(autoincrement())
+  status      String   @default("pending")
+  type        String   @default("other")
+  resolution  String?
+  priority    String   @default("medium")
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pedido_id Int?
+  pedido    Pedido? @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+
+  producto_id Int?
+  producto    Product? @relation(fields: [producto_id], references: [id])
+
+  profileId Int? // <-- Agregar
+  profile   Profile? @relation(fields: [profileId], references: [id]) // <-- Agregar
+
+  defectiveProducts PedidoProducto[] @relation("complaint_products")
+
+  @@map("complaints")
+}
+
+model Card {
+  id           Int    @id @default(autoincrement())
+  stripeCardId String
+  last4        String
+  brand        String
+
+  profileId Int
+  profile   Profile @relation(fields: [profileId], references: [id])
+}
+
+model Oficina {
+  id_oficina           Int      @id @default(autoincrement())
+  clave_oficina_postal String   @db.VarChar(5)
+  clave_cuo            String   @unique @db.VarChar(5)
+  clave_inmueble       String   @db.VarChar(5)
+  clave_inegi          String   @db.VarChar(10)
+  clave_entidad        String   @db.VarChar(2)
+  nombre_entidad       String   @db.VarChar(50)
+  nombre_municipio     String   @db.VarChar(50)
+  tipo_cuo             String
+  nombre_cuo           String   @db.VarChar(100)
+  domicilio            String   @db.VarChar(200)
+  codigo_postal        String   @db.VarChar(5)
+  clave_unica_zona     String?
+  telefono             String   @db.VarChar(20)
+  pais                 String   @default("México") @db.VarChar(50)
+  latitud              Decimal
+  longitud             Decimal
+  activo               Boolean  @default(true)
+  horario_atencion     String?  @db.VarChar(150)
+  fecha_registro       DateTime @default(now())
+
+  unidades          Unidad[]         @relation("OficinaUnidad")
+  unidadesAsignadas Unidad[]         @relation("OficinaAsignada")
+  unidadSucursales  UnidadSucursal[]
+
+  conductores          Conductor[]
+  historialAsignacions HistorialAsignacion[]
+
+  @@map("oficinas")
+}
+
+model Proveedor {
+  id              Int     @id @default(autoincrement())
+  proveedor       String
+  sub             String
+  id_usuario      Int
+  correo_asociado String?
+
+  @@map("proveedores")
+}
+
+model Unidad {
+  id                 Int      @id @default(autoincrement())
+  placas             String   @unique
+  volumenCarga       Decimal  @map("volumen_carga") @db.Decimal(10, 2)
+  numEjes            Int      @map("num_ejes")
+  numLlantas         Int      @map("num_llantas")
+  fechaAlta          DateTime @map("fecha_alta")
+  tarjetaCirculacion String   @unique @map("tarjeta_circulacion")
+
+  tipoVehiculoId Int          @map("tipo_vehiculo")
+  tipoVehiculo   TipoVehiculo @relation(fields: [tipoVehiculoId], references: [id])
+
+  curpConductor String?    @map("curp_conductor")
+  conductor     Conductor? @relation(fields: [curpConductor], references: [curp])
+
+  claveOficina String  @map("clave_oficina")
+  oficina      Oficina @relation("OficinaUnidad", fields: [claveOficina], references: [clave_cuo])
+
+  zonaAsignada String?  @map("zona_asignada")
+  asignada     Oficina? @relation("OficinaAsignada", fields: [zonaAsignada], references: [clave_cuo])
+
+  estado String @default("disponible")
+
+  envios               Envio[]
+  historialAsignacions HistorialAsignacion[]
+  unidadSucursales     UnidadSucursal[]
+
+  @@map("unidades")
+}
+
+model UnidadSucursal {
+  id              Int     @id @default(autoincrement())
+  claveSucursal   String  @map("clave_sucursal")
+  oficina         Oficina @relation(fields: [claveSucursal], references: [clave_cuo])
+  estadoUnidad    String  @map("estado_unidad")
+  conductorUnidad String  @map("conductor_unidad")
+  idUnidad        Int     @unique @map("id_unidad")
+  unidad          Unidad  @relation(fields: [idUnidad], references: [id])
+
+  @@map("unidad_sucursal")
+}
+
+model TipoVehiculo {
+  id           Int     @id @default(autoincrement())
+  tipoVehiculo String  @unique @map("tipo_vehiculo")
+  capacidadKg  Decimal @map("capacidad_kg") @db.Decimal(10, 2)
+
+  unidades Unidad[]
+  oficinas TipoVehiculoOficina[] // ← Relación inversa ya existe
+
+  @@map("tipos_vehiculos")
+}
+
+model TipoVehiculoOficina {
+  id             Int          @id @default(autoincrement())
+  tipoVehiculoId Int          @map("tipo_vehiculo")
+  tipoVehiculo   TipoVehiculo @relation(fields: [tipoVehiculoId], references: [id])
+  tipoOficina    String       @map("tipo_oficina")
+
+  @@map("tipo_vehiculo_sucursal")
+}
+
+model Conductor {
+  id              Int      @id @default(autoincrement())
+  nombreCompleto  String   @map("nombre_completo")
+  curp            String   @unique
+  rfc             String   @unique
+  licencia        String
+  licenciaVigente Boolean  @map("licencia_vigente")
+  telefono        String
+  correo          String
+  fechaAlta       DateTime @map("fecha_alta")
+  disponibilidad  Boolean
+
+  claveOficina String  @map("clave_oficina")
+  oficina      Oficina @relation(fields: [claveOficina], references: [clave_cuo])
+
+  unidades            Unidad[]
+  historialAsignacion HistorialAsignacion?
+
+  @@map("conductores")
+}
+
+model Envio {
+  id                       Int       @id @default(autoincrement())
+  estado_envio             String    @default("pendiente")
+  fecha_asignacion         DateTime  @default(now())
+  fecha_entrega_programada DateTime  @db.Date
+  nombre_receptor          String?
+  evidencia_entrega        String?
+  motivo_fallo             String?
+  fecha_entregado          DateTime? @db.Date
+  fecha_fallido            DateTime? @db.Date
+
+  id_guia String
+  guia    Guia   @relation(fields: [id_guia], references: [id_guia], onDelete: Cascade)
+
+  id_unidad Int?
+  unidad    Unidad? @relation(fields: [id_unidad], references: [id], onDelete: SetNull)
+
+  @@map("envios")
+}
+
+model Guia {
+  id_guia                String    @id @default(uuid())
+  numero_de_rastreo      String    @unique
+  situacion_actual       String
+  alto_cm                Decimal   @db.Decimal(5, 2)
+  largo_cm               Decimal   @db.Decimal(5, 2)
+  ancho_cm               Decimal   @db.Decimal(5, 2)
+  peso_kg                Decimal   @db.Decimal(4, 2)
+  valor_declarado        Decimal   @db.Decimal(10, 2)
+  fecha_creacion         DateTime
+  fecha_actualizacion    DateTime
+  fecha_entrega_estimada DateTime?
+  key_pdf                String?
+
+  id_remitente String?
+  remitente    ContactoGuia? @relation("Remitente", fields: [id_remitente], references: [id_contacto])
+
+  id_destinatario String?
+  destinatario    ContactoGuia? @relation("Destinatario", fields: [id_destinatario], references: [id_contacto])
+
+  profile_id  Int?
+  profile     Profile?         @relation(fields: [profile_id], references: [id])
+  envios      Envio[]
+  movimientos MovimientoGuia[]
+  incidencias IncidenciaGuia[]
+
+  @@map("guias")
+}
+
+model ContactoGuia {
+  id_contacto     String   @id @default(uuid())
+  id_usuario      String?
+  nombres         String
+  apellidos       String
+  telefono        String
+  calle           String
+  numero          String
+  numero_interior String?
+  asentamiento    String
+  codigo_postal   String
+  localidad       String
+  estado          String
+  pais            String?
+  lat             Decimal?
+  lng             Decimal?
+  referencia      String?
+
+  guiasRemitente    Guia[] @relation("Remitente")
+  guiasDestinatario Guia[] @relation("Destinatario")
+
+  @@map("contactos_guias")
+}
+
+model ShippingRate {
+  id    Int     @id @default(autoincrement())
+  kgMin Decimal @map("kg_min") @db.Decimal(5, 2)
+  kgMax Decimal @map("kg_max") @db.Decimal(5, 2)
+  price Decimal @db.Decimal(10, 2)
+
+  zoneId Int  @map("zone_id")
+  zone   Zone @relation(fields: [zoneId], references: [id])
+
+  serviceId Int     @map("service_id")
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  @@map("shipping_rates")
+}
+
+model Zone {
+  id          Int    @id @default(autoincrement())
+  zoneName    String @map("zone_name") @db.VarChar(50)
+  minDistance Int    @map("min_distance")
+  maxDistance Int?   @map("max_distance")
+
+  shippingRates ShippingRate[]
+
+  @@map("zones")
+}
+
+model Service {
+  id          Int    @id @default(autoincrement())
+  serviceName String @map("service_name") @db.VarChar(100)
+
+  shippingRates ShippingRate[]
+
+  @@map("services")
+}
+
+model SolicitudVendedor {
+  id               Int       @id @default(autoincrement())
+  nombre_tienda    String
+  categoria_tienda String
+  telefono         String
+  email            String?
+  direccion_fiscal String
+  rfc              String
+  curp             String
+  img_uri          String?
+  userId           Int?
+  usuario          Usuarios? @relation(fields: [userId], references: [id])
+
+  @@map("solicitud_vendedor")
+}
+
+model CreateSeller {
+  id            Int       @id @default(autoincrement())
+  name          String
+  RFC           String?
+  address       String?
+  phone         String?
+  email         String    @unique
+  password      String
+  user          String?
+  ip_last_login String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+
+  @@map("create_seller")
+}
+
+model CreatedCoupon {
+  id         Int     @id @default(autoincrement())
+  product_id Int
+  product    Product @relation(fields: [product_id], references: [id])
+
+  @@map("created_coupons")
+}
+
+model GiftedCoupon {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  usuario   Usuarios @relation(fields: [user_id], references: [id])
+  coupon_id Int
+  cupon     Cupon    @relation(fields: [coupon_id], references: [id])
+
+  @@map("gifted_coupons")
+}
+
+model HistorialAsignacion {
+  id                  Int       @id @default(autoincrement())
+  placasUnidad        String    @map("placas_unidad") @db.VarChar(20)
+  claveOficinaSalida  String    @map("oficina_salida") @db.VarChar(5)
+  claveOficinaDestino String    @map("clave_cuo_destino") @db.VarChar(10)
+  claveOficinaActual  String?   @map("clave_oficina_actual") @db.VarChar(10)
+  fechaAsignacion     DateTime  @default(now()) @map("fecha_asignacion")
+  fechaLlegadaDestino DateTime? @map("fecha_llegada_destino")
+  fechaFinalizacion   DateTime? @map("fecha_finalizacion")
+  nombreConductor     String    @map("nombre_conductor") @db.VarChar(255)
+  curp                String    @db.VarChar(18)
+  idOficina           Int?      @map("id_oficina")
+  oficina             Oficina?  @relation(fields: [idOficina], references: [id_oficina])
+
+  idUnidad Int?    @map("id_unidades")
+  unidad   Unidad? @relation(fields: [idUnidad], references: [id])
+
+  idPedido Int?    @map("id_pedidos")
+  pedido   Pedido? @relation(fields: [idPedido], references: [id])
+
+  idConductor Int?       @unique @map("id_conductor")
+  conductor   Conductor? @relation(fields: [idConductor], references: [id])
+
+  @@map("asignaciones_historial")
+}
+
+model InternationalZone {
+  id          Int                    @id @default(autoincrement())
+  code        String                 @unique
+  description String
+  tariffs     InternationalTariff[]
+  countries   InternationalCountry[]
+
+  @@map("international_zones")
+}
+
+model InternationalCountry {
+  id      Int               @id @default(autoincrement())
+  name    String            @unique
+  isoCode String?           @map("iso_code") @db.VarChar(3)
+  zoneId  Int               @map("zone_id")
+  zone    InternationalZone @relation(fields: [zoneId], references: [id])
+
+  @@map("international_countries")
+}
+
+model InternationalTariff {
+  id              Int               @id @default(autoincrement())
+  zoneId          Int               @map("zone_id")
+  zone            InternationalZone @relation(fields: [zoneId], references: [id])
+  maxKg           Float?            @map("max_kg")
+  basePrice       Float?            @map("base_price")
+  ivaPercent      Float?            @map("iva_percent")
+  additionalPerKg Float?            @map("additional_per_kg")
+
+  @@map("international_tariffs")
+}
+
+model Paquete {
+  id             Int      @id @default(autoincrement())
+  estatus        String   @default("En proceso") @db.VarChar(20)
+  calle          String   @db.VarChar(250)
+  colonia        String   @db.VarChar(250)
+  cp             String   @db.VarChar(5)
+  indicaciones   String?  @db.VarChar
+  numero_guia    String   @map("numero_guia") @db.VarChar(100)
+  sku            String   @db.VarChar(100)
+  longitud       Float
+  latitud        Float
+  evidencia      String?  @db.VarChar
+  fecha_creacion DateTime @default(now()) @map("fecha_creacion")
+
+  asignaciones AsignacionPaquetes[]
+
+  @@map("paquetes")
+}
+
+model AsignacionPaquetes {
+  id               Int      @id @default(autoincrement())
+  fecha_asignacion DateTime @default(now()) @map("fecha_asignacion")
+
+  idPaqueteId Int?
+  paquete     Paquete? @relation(fields: [idPaqueteId], references: [id])
+
+  @@map("asignacion_paquetes")
+}
+
+model MovimientoGuia {
+  id_movimiento    String   @id // @default(uuid())
+  id_guia          String
+  guia             Guia     @relation(fields: [id_guia], references: [id_guia])
+  id_sucursal      String   @db.VarChar
+  id_ruta          String   @db.VarChar
+  estado           String   @db.VarChar
+  localizacion     String   @db.VarChar
+  fecha_movimiento DateTime @db.Timestamptz
+
+  @@map("movimientos_guias")
+}
+
+model IncidenciaGuia {
+  id_incidencia          String   @id
+  id_guia                String
+  guia                   Guia     @relation(fields: [id_guia], references: [id_guia])
+  tipo_incidencia        String   @db.VarChar
+  descripcion            String?  @db.VarChar
+  fecha_incidencia       DateTime @db.Timestamptz
+  id_usuario_responsable String   @db.VarChar
+
+  @@map("incidencias_guias")
+}
+
+enum descuentos_tipo_enum {
+  porcentaje
+  monto_fijo
+}
+
+enum descuentos_tipo_aplicacion_enum {
+  producto
+  categoria
+  carrito
+  envio
+}
+
+enum descuentos_estado_enum {
+  activo
+  inactivo
+  programado
+  expirado
+}
+
+model Descuento {
+  id                   Int                             @id @default(autoincrement())
+  nombre               String                          @db.VarChar(100)
+  descripcion          String?
+  tipo                 descuentos_tipo_enum            @default(porcentaje)
+  valor                Decimal                         @db.Decimal(10, 2)
+  tipoAplicacion       descuentos_tipo_aplicacion_enum @map("tipo_aplicacion")
+  valoresAplicacion    Json?                           @map("valores_aplicacion")
+  montoMinimo          Decimal                         @default(0) @map("monto_minimo") @db.Decimal(10, 2)
+  descuentoMaximo      Decimal?                        @map("descuento_maximo") @db.Decimal(10, 2)
+  fechaInicio          DateTime?                       @map("fecha_inicio")
+  fechaFin             DateTime?                       @map("fecha_fin")
+  estado               descuentos_estado_enum          @default(activo)
+  prioridad            Int                             @default(10)
+  combinable           Boolean                         @default(true)
+  combinableConCupones Boolean                         @default(true) @map("combinable_con_cupones")
+  usosMaximos          Int?                            @map("usos_maximos")
+  usosActuales         Int                             @default(0) @map("usos_actuales")
+  automatico           Boolean                         @default(false)
+  fechaCreacion        DateTime                        @default(now()) @map("fecha_creacion")
+  fechaActualizacion   DateTime                        @default(now()) @updatedAt @map("fecha_actualizacion")
+  usuarioCreadorId     Int?                            @map("usuario_creador_id")
+
+  @@map("descuentos")
+}
