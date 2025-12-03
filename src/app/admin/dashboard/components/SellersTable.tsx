@@ -12,6 +12,7 @@ import {
 } from "@/actions/sellers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Vendedor {
   uniqueId: string;
@@ -324,13 +325,13 @@ export function SellersTable() {
                     <div className="flex items-center justify-center gap-2">
 
                       {/* VER */}
-                      <button
-                        onClick={() => handleVerVendedor(v)}
+                      <Link
+                        href={`/admin/dashboard/vendedor/${v.originalId}`}
                         className="px-3 py-2 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-1.5"
                       >
                         <Eye className="w-4 h-4" />
                         Ver
-                      </button>
+                      </Link>
 
                       {/* ELIMINAR */}
                       <button

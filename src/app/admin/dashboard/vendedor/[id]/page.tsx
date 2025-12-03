@@ -112,34 +112,65 @@ const metricsConfig = {
 export default function SellerProfile() {
   const params = useParams();
   const id = Number(params.id);
+  
+  // All useState hooks at the top
   const [pageProducts] = useState(1);
-    const [pageProductTable, setPageProductTable] = useState(1);
+  const [pageProductTable, setPageProductTable] = useState(1);
   const [search, setSearch] = useState("");
   const [brand, setBrand] = useState("");
   const [status, setStatus] = useState<StatusValue>(statusOptions[0].value);
+  const [page, setPage] = useState(1);
+  const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("yearly");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [series, setSeries] = useState<{ name: string; data: number[] }[]>([
+    { name: "Ventas", data: [] },
+    { name: "Ingresos", data: [] },
+  ]);
+  const [categories, setCategories] = useState<string[]>([]);
+
   const { isMobile } = useSidebar();
   const debouncedSearch = useDebounce(search, 500);
 
-
+  // All useQuery hooks
   const { data: productsData, isPending: isProductsPending, error: productsError } = useQuery({
     queryKey: ["products", id, pageProducts],
     queryFn: () => getProductsById({ sellerId: id, page: pageProducts }),
     placeholderData: keepPreviousData,
   });
 
-    const { data: brands } = useQuery({
+  const { data: brands } = useQuery({
     queryKey: ["product-brands"],
     queryFn: getUniqueBrands,
   });
 
-    const { data: productsTableData, error: productsTableError, isPending: isProductsTablePending, isFetching: isProductsTableFetching  } = useQuery({
+  const { data: productsTableData, error: productsTableError, isPending: isProductsTablePending, isFetching: isProductsTableFetching } = useQuery({
     queryKey: ["products", pageProductTable, debouncedSearch, brand, status],
     queryFn: () => getProductsById({ page: pageProductTable, search: debouncedSearch, brand, status, sellerId: id }),
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
-
   });
 
+  const { data: ordersData, error: ordersError, isPending: isOrdersPending } = useQuery({
+    queryKey: ["orders", page],
+    queryFn: () => getOrdersById({ page, sellerId: id }),
+    placeholderData: keepPreviousData,
+  });
+
+  const [customersCount, ordersCount] = useQueries({
+    queries: [
+      {
+        queryKey: ["customers-count", id],
+        queryFn: () => getCustomersCountById(id),
+        staleTime: 30 * 1000,
+      },
+      {
+        queryKey: ["orders-count", id],
+        queryFn: () => getOrdersCountById(id),
+        staleTime: 30 * 1000,
+      }
+    ],
+  });
 
   const products: Product[] = productsData?.products ?? [];
 
@@ -163,29 +194,50 @@ export default function SellerProfile() {
       { id: 4, key: "sinStock", label: "Sin stock", value: sinStock },
     ];
   }, [products]);
-  console.log("metrics", metrics);
 
-  // if (isPending) return <p className="text-gray-500 dark:text-gray-400">Cargando métricas...</p>;
-  if (productsError) return <p className="text-red-500">Error al cargar productos.</p>;
-
-  const [customersCount, ordersCount] = useQueries({
-    queries: [
-      {
-        queryKey: ["customers-count", id],
-        queryFn: () => getCustomersCountById(id),
-        staleTime: 30 * 1000, // 30 seconds
-      },
-      {
-        queryKey: ["orders-count", id],
-        queryFn: () => getOrdersCountById(id),
-        staleTime: 30 * 1000, // 30 seconds
+  // useEffect for sales data
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { sales, revenue, categories } = await getSalesDataById(id, period, year, month);
+        setSeries([
+          { name: "Ventas", data: sales },
+          { name: "Ingresos", data: revenue },
+        ]);
+        setCategories(categories);
+      } catch (error) {
+        console.error("Failed to fetch sales data", error);
       }
-    ],
-  });
-  console.log(customersCount.data);
-  const isLoading =
-    customersCount.isLoading || ordersCount.isLoading;
+    }
+    fetchData();
+  }, [id, period, year, month]);
+
+  // Derived state
+  const isLoading = customersCount.isLoading || ordersCount.isLoading;
   const isError = customersCount.isError || ordersCount.isError;
+  const isAnyPending = isOrdersPending || isProductsTablePending;
+  const hasAnyError = productsError || ordersError || productsTableError || isError;
+
+  const years = [
+    { value: (new Date().getFullYear() - 1).toString(), label: (new Date().getFullYear() - 1).toString() },
+    { value: new Date().getFullYear().toString(), label: new Date().getFullYear().toString() },
+    { value: (new Date().getFullYear() + 1).toString(), label: (new Date().getFullYear() + 1).toString() },
+  ];
+
+  const months = [
+    { value: "0", label: "Enero" },
+    { value: "1", label: "Febrero" },
+    { value: "2", label: "Marzo" },
+    { value: "3", label: "Abril" },
+    { value: "4", label: "Mayo" },
+    { value: "5", label: "Junio" },
+    { value: "6", label: "Julio" },
+    { value: "7", label: "Agosto" },
+    { value: "8", label: "Septiembre" },
+    { value: "9", label: "Octubre" },
+    { value: "10", label: "Noviembre" },
+    { value: "11", label: "Diciembre" },
+  ];
 
   const cards = [
     {
@@ -214,94 +266,19 @@ export default function SellerProfile() {
     },
   ];
 
-  const [page, setPage] = useState(1);
-  
-    const { data: ordersData, error: ordersError, isPending: isOrdersPending } = useQuery({
-      queryKey: ["orders", page],
-      queryFn: () => getOrdersById({ page, sellerId: id }),
-      placeholderData: keepPreviousData,
-    });
-  
-    if (isOrdersPending) {
-      return (
-        <GeneralCardLoading title={true} className={`h-[570px] relative`}>
-          <section className="flex flex-col h-full justify-between gap-4">
-            <div className="animate-pulse bg-foreground/10 flex-1 min-h-[120px] w-full rounded-md" />
-            <div className="flex justify-center md:justify-end w-full pt-2">
-              <PaginationSkeleton />
-            </div>
-          </section>
-        </GeneralCardLoading>
-      );
-    }
-  
-    if (ordersError) {
-      return <GeneralErrorContent className={`h-[570px]`} />;
-    }
-
-
-  if(isProductsTablePending){
-    return <GeneralCardLoading title={true} className={`h-[570px] relative`} >
-      <section className="flex flex-col h-full justify-between gap-4">
-        <div className="animate-pulse bg-foreground/10 flex-1 min-h-[120px] w-full rounded-md"/>        
-        <div className="flex justify-center md:justify-end w-full pt-2">
-          <PaginationSkeleton />
-        </div>
-      </section>
-      </GeneralCardLoading>
+  // Unified loading state
+  if (isAnyPending) {
+    return (
+      <div className="flex items-center justify-center h-[570px]">
+        <Loader2Icon className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    );
   }
 
-  if(productsTableError){
-    return <GeneralErrorContent className={`h-[570px]`} />
+  // Unified error state
+  if (hasAnyError) {
+    return <GeneralErrorContent className="h-[570px]" />;
   }
-
-
-const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("yearly");
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth());
-
-  const [series, setSeries] = useState<{ name: string; data: number[] }[]>([
-    { name: "Ventas", data: [] },
-    { name: "Ingresos", data: [] },
-  ]);
-  const [categories, setCategories] = useState<string[]>([]);
-
-  const years = [
-    { value: (new Date().getFullYear() - 1).toString(), label: (new Date().getFullYear() - 1).toString() },
-    { value: new Date().getFullYear().toString(), label: new Date().getFullYear().toString() },
-    { value: (new Date().getFullYear() + 1).toString(), label: (new Date().getFullYear() + 1).toString() },
-  ];
-
-  const months = [
-    { value: "0", label: "Enero" },
-    { value: "1", label: "Febrero" },
-    { value: "2", label: "Marzo" },
-    { value: "3", label: "Abril" },
-    { value: "4", label: "Mayo" },
-    { value: "5", label: "Junio" },
-    { value: "6", label: "Julio" },
-    { value: "7", label: "Agosto" },
-    { value: "8", label: "Septiembre" },
-    { value: "9", label: "Octubre" },
-    { value: "10", label: "Noviembre" },
-    { value: "11", label: "Diciembre" },
-  ];
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const { sales, revenue, categories } = await getSalesDataById(id, period, year, month);
-        setSeries([
-          { name: "Ventas", data: sales },
-          { name: "Ingresos", data: revenue },
-        ]);
-        setCategories(categories);
-      } catch (error) {
-        console.error("Failed to fetch sales data", error);
-      }
-    }
-    fetchData();
-  }, [period, year, month]);
 
   const options: ApexOptions = {
     legend: {
