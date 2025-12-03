@@ -726,7 +726,7 @@ export default function SellerProfile() {
                           </PopoverContent>
                           </Popover>
                         )}
-                        <AddProductDialog />
+                        {/* <AddProductDialog /> */}
               
                       </div>
                       
@@ -780,11 +780,11 @@ export default function SellerProfile() {
                             >
                               Pedidos
                             </TableCell>
-                            <TableCell
+                            {/* <TableCell
                               className="py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400"
                             >
                               Acciones
-                            </TableCell>
+                            </TableCell> */}
                           </TableRow>
                         </TableHeader>
                           
@@ -839,12 +839,12 @@ export default function SellerProfile() {
                               <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
                                 {product.pedidoProductosCount || 0}
                               </TableCell>
-                              <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
+                              {/* <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
                                 <div className="flex items-center justify-end gap-2">
                                   <EditProductDialog product={product} />
                                   <DeleteProductDialog productId={product.id} />
                                 </div>
-                              </TableCell>
+                              </TableCell> */}
                             </TableRow>
                           ))} 
                           {
