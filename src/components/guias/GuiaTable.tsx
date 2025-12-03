@@ -64,7 +64,7 @@ export default function GuiaTable() {
 
           <div className="flex flex-row justify-end gap-3 items-center w-full">
             <ExpandableInput
-              expandedSize={isMobile ? "150px" : "300px"}
+              expandedSize={isMobile ? "220px" : "300px"}
               placeholder="Buscar por rastreo o usuario..."
               value={search}
               onChange={(e) => {

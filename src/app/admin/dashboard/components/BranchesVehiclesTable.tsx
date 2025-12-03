@@ -88,11 +88,11 @@ export function BranchesDriversTable() {
       {/* Header con título y botón de refrescar */}
       <div className="p-6 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <User className="w-6 h-6 text-blue-600 dark:text-blue-500" />
+          <User className="w-6 h-6  sm:block hidden  text-blue-600 dark:text-blue-500" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             Conductores por Sucursal
           </h2>
-          <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">
+          <span className="px-2 py-1 text-xs  sm:block hidden  bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">
             {pagination.total} total
           </span>
         </div>
