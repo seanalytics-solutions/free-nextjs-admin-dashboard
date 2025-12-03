@@ -20,6 +20,59 @@ export async function getSellers() {
   }
 }
 
+export async function getSellersPaginated(
+  page: number = 1,
+  limit: number = 10,
+  search: string = ""
+) {
+  try {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      rol: "vendedor",
+    };
+
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: "insensitive" } },
+        { apellido: { contains: search, mode: "insensitive" } },
+        { correo: { contains: search, mode: "insensitive" } },
+        { profile: { RFC: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [total, sellers] = await Promise.all([
+      prisma.usuarios.count({ where }),
+      prisma.usuarios.findMany({
+        where,
+        include: {
+          profile: true,
+        },
+        skip,
+        take: limit,
+        orderBy: { id: "asc" },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: sellers,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching paginated sellers:", error);
+    return {
+      data: [],
+      pagination: { total: 0, totalPages: 0, currentPage: 1, limit },
+    };
+  }
+}
+
 export async function getSellerRequests() {
   try {
     const requests = await prisma.solicitudVendedor.findMany({
@@ -37,6 +90,63 @@ export async function getSellerRequests() {
     return [];
   }
 }
+
+export async function getSellerRequestsPaginated(
+  page: number = 1,
+  limit: number = 10,
+  search: string = ""
+) {
+  try {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { nombre_tienda: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { rfc: { contains: search, mode: "insensitive" } },
+        { usuario: { nombre: { contains: search, mode: "insensitive" } } },
+        { usuario: { apellido: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [total, requests] = await Promise.all([
+      prisma.solicitudVendedor.count({ where }),
+      prisma.solicitudVendedor.findMany({
+        where,
+        include: {
+          usuario: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { id: "asc" },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: requests,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching paginated seller requests:", error);
+    return {
+      data: [],
+      pagination: { total: 0, totalPages: 0, currentPage: 1, limit },
+    };
+  }
+}
+
 
 export async function acceptSellerRequest(requestId: number) {
   try {

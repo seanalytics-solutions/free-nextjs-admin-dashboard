@@ -2,7 +2,8 @@
 
 import { Eye, Trash2, Check, X, Search, Users, UserPlus } from "lucide-react";
 import { ImageWithFallback } from "./ImageWithFallback";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Pagination from "@/components/tables/Pagination";
 import {
   acceptSellerRequest,
   rejectSellerRequest,
@@ -31,6 +32,12 @@ export function SellersTable() {
   const queryClient = useQueryClient();
   const [tabActiva, setTabActiva] = useState<"activos" | "solicitudes">("activos");
   const [busqueda, setBusqueda] = useState("");
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [tabActiva, busqueda]);
   
   // Modal state handling both delete and reject actions
   const [confirmModal, setConfirmModal] = useState<{
@@ -154,10 +161,6 @@ export function SellersTable() {
     if (item) acceptMutation.mutate(item.originalId);
   };
 
-  const handleVerVendedor = (v: Vendedor) => {
-    alert(`Detalles de ${v.nombre}`);
-  };
-
   // === FILTRO ===
   const filtrarVendedores = (lista: Vendedor[]) => {
     if (!busqueda.trim()) return lista;
@@ -180,17 +183,19 @@ export function SellersTable() {
     vendedores.filter((v) => v.estado === "pendiente")
   );
 
+  const currentList = tabActiva === "activos" ? activos : pendientes;
+  const totalPages = Math.ceil(currentList.length / itemsPerPage);
+  const paginatedList = currentList.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   if (isLoading) {
     return <div className="p-10 text-center text-gray-500">Cargando datos...</div>;
   }
 
   return (
-    <div className="
-              relative rounded-2xl p-6 shadow-lg hover:shadow-xl
-              transition-all duration-300 overflow-hidden border 
-              bg-white border-slate-200
-              dark:bg-white/3 dark:border-gray-800
-            ">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3">
       {/* ======== HEADER ======== */}
       <div className="p-6 pb-0">
         <div className="flex items-center justify-between gap-6 mb-4">
@@ -202,16 +207,7 @@ export function SellersTable() {
               placeholder="Buscar por nombre, correo o RFC..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="
-      w-full pl-12 pr-4 py-3
-      rounded-2xl border bg-white border-slate-200
-      shadow-lg hover:shadow-xl transition-all duration-300
-      text-gray-900 placeholder-gray-400
-      focus:ring-2 focus:ring-blue-500 focus:border-transparent
-
-      dark:bg-white/3 dark:border-gray-800 
-      dark:text-gray-100 dark:placeholder-gray-500
-    "
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
@@ -269,49 +265,49 @@ export function SellersTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-neutral-700">
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   Nombre del vendedor
                 </th>
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   Correo
                 </th>
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   RFC
                 </th>
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   Rol
                 </th>
-                <th className="px-6 py-3 text-center text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                   Acciones
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {activos.map((v) => (
+              {paginatedList.map((v) => (
                 <tr
                   key={v.uniqueId}
-                  className="border-b border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                  className=" border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <ImageWithFallback
                         src={v.imagen}
                         alt={`${v.nombre} ${v.apellido}`}
-                        className="w-11 h-11 rounded-lg object-cover"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
-                      <div className="text-gray-900 dark:text-gray-100">
+                      <div className="font-medium text-gray-800 dark:text-white/90">
                         {v.nombre} {v.apellido}
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                     {v.correo}
                   </td>
 
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                     {v.rfc}
                   </td>
 
@@ -363,37 +359,37 @@ export function SellersTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-neutral-700">
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   Nombre del solicitante
                 </th>
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   Correo
                 </th>
-                <th className="px-6 py-3 text-left text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                   RFC
                 </th>
-                <th className="px-6 py-3 text-center text-gray-700 dark:text-gray-300">
+                <th className="px-6 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                   Acciones
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {pendientes.map((v) => (
+              {paginatedList.map((v) => (
                 <tr
                   key={v.uniqueId}
-                  className="border-b border-gray-100 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                  className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <ImageWithFallback
                         src={v.imagen}
                         alt={`${v.nombre} ${v.apellido}`}
-                        className="w-11 h-11 rounded-lg object-cover"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
                       <div>
-                        <div className="text-gray-900 dark:text-gray-100">
+                        <div className="font-medium text-gray-800 dark:text-white/90">
                           {v.nombre} {v.apellido}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -403,11 +399,11 @@ export function SellersTable() {
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                     {v.correo}
                   </td>
 
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                     {v.rfc}
                   </td>
 
@@ -447,10 +443,22 @@ export function SellersTable() {
         </div>
       )}
 
+      {/* ======== PAGINACIÓN ======== */}
+      {currentList.length > 0 && (
+        <div className="px-6 py-4 border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-center md:justify-end gap-4">
+       
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
+
       {/* ============ MODAL DE CONFIRMACIÓN ============ */}
       {confirmModal.open && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[999]">
-          <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 w-full max-w-sm shadow-xl border border-gray-200 dark:border-neutral-700 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-999">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-sm shadow-xl border border-gray-200 dark:border-gray-800 animate-fadeIn">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {confirmModal.action === "delete" ? "Confirmar eliminación" : "Confirmar rechazo"}
             </h2>
@@ -463,7 +471,7 @@ export function SellersTable() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setConfirmModal({ open: false, id: null, action: null })}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 rounded-lg transition"
+                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
               >
                 Cancelar
               </button>

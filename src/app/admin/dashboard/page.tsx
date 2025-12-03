@@ -1,6 +1,8 @@
 import React from "react";
 import { SellersTable } from "./components/SellersTable";
 import { BranchesVehiclesTable } from "./components/BranchesVehiclesTable";
+import { VehiclesTable } from "./components/VehiclesTable";
+import { OfficesTable } from "./components/OfficesTable";
 
 export default function AdminDashboard() {
   return (
@@ -22,6 +24,12 @@ export default function AdminDashboard() {
         </div>
         <div className="col-span-12 mt-6">
           <BranchesVehiclesTable />
+        </div>
+        <div className="col-span-12 mt-6">
+          <VehiclesTable />
+        </div>
+        <div className="col-span-12 mt-6">
+          <OfficesTable />
         </div>
       </div>
     </div>
