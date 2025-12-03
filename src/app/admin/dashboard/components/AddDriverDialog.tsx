@@ -83,7 +83,7 @@ export default function AddDriverDialog({
       <Dialog onOpenChange={setIsModalOpen} open={isModalOpen}>
         <DialogTrigger asChild>
           <Button className={className} onClick={() => setIsModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4 mr-2 sm:block hidden" />
             Agregar Conductor
           </Button>
         </DialogTrigger>
