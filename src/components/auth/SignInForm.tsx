@@ -61,7 +61,7 @@ export default function SignInForm() {
               Ingresa tu correo electrónico y contraseña para iniciar sesión.
             </p>
           </div>
-          <button
+          {/* <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
             className="inline-flex w-full items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
           >
@@ -90,7 +90,7 @@ export default function SignInForm() {
                   />
                 </svg>
                 Iniciar sesión con Google
-              </button>
+              </button> */}
           <div>
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
@@ -124,12 +124,12 @@ export default function SignInForm() {
                 </div>
                 <div className="flex items-center justify-between">
                  
-                  <Link
+                  {/* <Link
                     href="/reset-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     ¿Olvidaste tu contraseña?
-                  </Link>
+                  </Link> */}
                 <div>
                   {/* {error && (
                     <div className="mb-4 text-sm text-center text-error-500">{error}</div>
