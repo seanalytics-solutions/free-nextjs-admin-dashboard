@@ -23,6 +23,9 @@ import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { FilterIcon } from "lucide-react";
+import Image from "next/image";
+import EditProductDialog from "./EditProductDialog";
+import DeleteProductDialog from "./DeleteProductDialog";
 
 const statusOptions = [
   { value: "all", label: "Todos los estados" },
@@ -50,13 +53,15 @@ export default function ProductTable() {
     queryKey: ["products", page, debouncedSearch, brand, status],
     queryFn: () => getProducts({ page, search: debouncedSearch, brand, status }),
     placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+
   });
 
   if(isPending){
     return <GeneralCardLoading title={true} className={`h-[570px] relative`} >
       <section className="flex flex-col h-full justify-between gap-4">
-        <div className="animate-pulse bg-foreground/10 h-[100cqh] min-h-[120px] !aspect-autow-full rounded-md"/>        
-        <div className="absolute left-1/2 bottom-8 md:bottom-0 transform md:relative -translate-x-1/2 md:self-end md:flex md:justify-end md:w-full">
+        <div className="animate-pulse bg-foreground/10 flex-1 min-h-[120px] w-full rounded-md"/>        
+        <div className="flex justify-center md:justify-end w-full pt-2">
           <PaginationSkeleton />
         </div>
       </section>
@@ -68,7 +73,7 @@ export default function ProductTable() {
   }
 
   return (
-    <div className={`overflow-hidden flex flex-col relative rounded-2xl h-[570px] border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6`} >
+    <div className={`overflow-hidden shadow-lg flex flex-col relative rounded-2xl h-[570px] border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6`} >
       <div className="flex flex-col gap-3">
         <div className="flex items-center w-full justify-between">      
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -206,9 +211,9 @@ export default function ProductTable() {
         </div>
      
       </div>
-      <div className="max-w-full flex-1  flex flex-col justify-between overflow-x-auto ">
-        
-        <Table className="h-full">
+      <div className="max-w-full flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto">
+        <Table className="h-full ">
           {/* Table Header */}
           <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
             <TableRow>
@@ -243,10 +248,20 @@ export default function ProductTable() {
                 Estado
               </TableCell>
               <TableCell
+                className="py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400"
+              >
+                Color
+              </TableCell>
+              <TableCell
                 
                 className="py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400"
               >
                 Pedidos
+              </TableCell>
+              <TableCell
+                className="py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400"
+              >
+                Acciones
               </TableCell>
             </TableRow>
           </TableHeader>
@@ -256,10 +271,19 @@ export default function ProductTable() {
               <TableRow key={product.id} className="">
                 <TableCell className="py-3">
                   <div className="flex items-center gap-3">
-                    {/* Placeholder image since we don't have images yet */}
+                    {product.images && product.images.length > 0 ? (
+                    <Image
+                      src={product.images && product.images.length > 0 ? product.images[0].url : '/placeholder-image.png'}
+                      alt={product.nombre}
+                      width={50}
+                      height={50}
+                      className="h-[50px] w-[50px] overflow-hidden rounded-md bg-gray-200 flex items-center justify-center text-gray-500"
+                    />
+                    ) : (
                     <div className="h-[50px] w-[50px] overflow-hidden rounded-md bg-gray-200 flex items-center justify-center text-gray-500">
                        Img
                     </div>
+                    )}
                     <div>
                       <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">
                         {product.nombre}
@@ -279,7 +303,7 @@ export default function ProductTable() {
                 <TableCell className="py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
                   {product.inventario}
                 </TableCell>
-                <TableCell className="py-3 text-gray-500 text-center flex items-center justify-center text-theme-sm dark:text-gray-400">
+                <TableCell className="pt-7 text-gray-500 text-center flex items-center justify-center text-theme-sm dark:text-gray-400">
                   <Badge
                     size="sm"
                     color={product.estado ? "success" : "error"}
@@ -287,15 +311,24 @@ export default function ProductTable() {
                     {product.estado ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
+                <TableCell className="py-3 pl-10 text-end text-gray-500 text-theme-sm dark:text-gray-400">
+                  <div className="w-full h-4 rounded-full" style={{ backgroundColor: product.color }} />
+                </TableCell>
                 <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
                   {product.pedidoProductosCount || 0}
+                </TableCell>
+                <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
+                  <div className="flex items-center justify-end gap-2">
+                    <EditProductDialog product={product} />
+                    <DeleteProductDialog productId={product.id} />
+                  </div>
                 </TableCell>
               </TableRow>
             ))} 
             {
               data?.products && data.products.length === 0 && (  
                 <TableRow>
-                  <TableCell className=" absolute top-1/2 bottom-1/2 inset-0 col-span-6 text-center text-gray-500 text-theme-sm dark:text-gray-400">
+                  <TableCell className=" absolute top-1/2 bottom-1/2 inset-0 col-span-7 text-center text-gray-500 text-theme-sm dark:text-gray-400">
                     Sin productos disponibles
                   </TableCell>
                 </TableRow>
@@ -303,7 +336,8 @@ export default function ProductTable() {
             }
           </TableBody>
         </Table>
-        <div className="absolute left-1/2 bottom-8 md:bottom-4 transform -translate-x-1/2 md:self-end md:flex md:justify-end md:w-full md:pr-6">
+        </div>
+        <div className="flex-none pt-4 pb-2 flex justify-center md:justify-end px-4">
             <Pagination
               currentPage={page}
               totalPages={data ? data.totalPages : 10}
