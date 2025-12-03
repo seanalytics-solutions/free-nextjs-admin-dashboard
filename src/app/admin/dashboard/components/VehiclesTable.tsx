@@ -7,18 +7,28 @@ import {
   getVehiclesPaginated,
   getSucursales,
   getTiposVehiculos,
+  getConductores,
 } from "@/actions/vehicles";
+import AddVehicleDialog from "./AddVehicleDialog";
+import EditVehicleDialog from "./EditVehicleDialog";
+import { useQuery } from "@tanstack/react-query";
 
 interface VehicleData {
   id: number;
   placas: string;
   tipoVehiculo: string;
   capacidadKg: number;
+  volumenCarga: number;
+  numEjes: number;
+  numLlantas: number;
+  tarjetaCirculacion: string;
   estado: string;
   conductor: {
     nombreCompleto: string;
+    curp?: string;
   } | null;
   sucursal: {
+    claveCuo: string;
     nombreCuo: string;
     nombreEntidad: string;
   };
@@ -36,10 +46,19 @@ interface TipoVehiculo {
   capacidadKg: number;
 }
 
+interface Conductor {
+  id: number;
+  nombreCompleto: string;
+  curp: string;
+  claveOficina: string;
+  disponibilidad: boolean;
+  isAssigned: boolean;
+}
+
 export function VehiclesTable() {
-  const [vehicles, setVehicles] = useState<VehicleData[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [tiposVehiculos, setTiposVehiculos] = useState<TipoVehiculo[]>([]);
+  const [conductores, setConductores] = useState<Conductor[]>([]);
   
   // Filters
   const [search, setSearch] = useState("");
@@ -48,62 +67,38 @@ export function VehiclesTable() {
   
   // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const limit = 10;
 
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data, isLoading, isRefetching, refetch } = useQuery({
+    queryKey: ["vehicles", page, limit, search, sucursalFiltro, tipoVehiculoFiltro],
+    queryFn: () => getVehiclesPaginated(page, limit, search, sucursalFiltro, tipoVehiculoFiltro),
+  });
+
+  const vehicles = data?.data || [];
+  const totalPages = data?.pagination.totalPages || 1;
+  const totalItems = data?.pagination.total || 0;
 
   const fetchFilters = useCallback(async () => {
     try {
-      const [sucursalesData, tiposData] = await Promise.all([
+      const [sucursalesData, tiposData, conductoresData] = await Promise.all([
         getSucursales(),
         getTiposVehiculos(),
+        getConductores(),
       ]);
       setSucursales(sucursalesData);
       setTiposVehiculos(tiposData);
+      setConductores(conductoresData);
     } catch (error) {
       console.error("Error fetching filters:", error);
     }
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await getVehiclesPaginated(
-        page,
-        limit,
-        search,
-        sucursalFiltro,
-        tipoVehiculoFiltro
-      );
-      setVehicles(result.data);
-      setTotalPages(result.pagination.totalPages);
-      setTotalItems(result.pagination.total);
-    } catch (error) {
-      console.error("Error fetching vehicles:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [page, search, sucursalFiltro, tipoVehiculoFiltro]);
-
   useEffect(() => {
     fetchFilters();
   }, [fetchFilters]);
 
-  useEffect(() => {
-    // Debounce search could be added here, but for now direct call
-    const timer = setTimeout(() => {
-      fetchData();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [fetchData]);
-
   const handleRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+    refetch();
   };
 
   const handlePageChange = (newPage: number) => {
@@ -151,14 +146,21 @@ export function VehiclesTable() {
             {totalItems} total
           </span>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all disabled:opacity-50"
-          title="Actualizar datos"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <AddVehicleDialog 
+            sucursales={sucursales} 
+            tiposVehiculos={tiposVehiculos} 
+            conductores={conductores}
+          />
+          <button
+            onClick={handleRefresh}
+            disabled={isRefetching}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all disabled:opacity-50"
+            title="Actualizar datos"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -231,12 +233,13 @@ export function VehiclesTable() {
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Sucursal</th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Conductor</th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="flex justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                   </div>
@@ -244,7 +247,7 @@ export function VehiclesTable() {
               </tr>
             ) : vehicles.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron vehículos
                 </td>
               </tr>
@@ -274,6 +277,14 @@ export function VehiclesTable() {
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm capitalize ${getEstadoColor(vehicle.estado)}`}>
                       {vehicle.estado.replace("_", " ")}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <EditVehicleDialog 
+                      vehicle={vehicle} 
+                      sucursales={sucursales} 
+                      tiposVehiculos={tiposVehiculos} 
+                      conductores={conductores}
+                    />
                   </td>
                 </tr>
               ))

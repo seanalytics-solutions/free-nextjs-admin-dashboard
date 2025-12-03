@@ -174,6 +174,9 @@ export function BranchesDriversTable() {
                 Sucursal
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
+                Vehículo
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
                 Estado
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -253,6 +256,20 @@ export function BranchesDriversTable() {
                       {driver.sucursal.nombreEntidad}
                     </div>
                   </div>
+                </td>
+                <td className="px-6 py-4">
+                  {driver.unidades.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {driver.unidades[0].placas}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {driver.unidades[0].tipoVehiculo}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400 italic">Sin vehículo</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <span
