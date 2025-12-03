@@ -869,3 +869,20 @@ span.flatpickr-weekday,
     @apply bg-background text-foreground;
   }
 }
+
+/* React-PDF styles - eliminar espacio extra y mejorar resolución */
+.pdf-document {
+  display: flex;
+  justify-content: center;
+}
+
+.pdf-page {
+  display: block !important;
+  line-height: 0;
+}
+
+.react-pdf__Page__canvas {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
