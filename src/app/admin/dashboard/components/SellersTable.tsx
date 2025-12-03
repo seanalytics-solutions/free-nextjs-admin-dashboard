@@ -39,7 +39,6 @@ export function SellersTable() {
     setPage(1);
   }, [tabActiva, busqueda]);
   
-  // Modal state handling both delete and reject actions
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean;
     id: string | null;
@@ -50,7 +49,6 @@ export function SellersTable() {
     action: null,
   });
 
-  // === DATA FETCHING ===
   const { data: vendedores = [], isLoading } = useQuery({
     queryKey: ["sellers-data"],
     queryFn: async () => {
@@ -94,7 +92,6 @@ export function SellersTable() {
     },
   });
 
-  // === MUTATIONS ===
   const acceptMutation = useMutation({
     mutationFn: async (originalId: number) => {
       const res = await acceptSellerRequest(originalId);
@@ -142,7 +139,6 @@ export function SellersTable() {
     },
   });
 
-  // === HANDLERS ===
   const handleConfirmAction = () => {
     if (!confirmModal.id || !confirmModal.action) return;
 
@@ -161,7 +157,6 @@ export function SellersTable() {
     if (item) acceptMutation.mutate(item.originalId);
   };
 
-  // === FILTRO ===
   const filtrarVendedores = (lista: Vendedor[]) => {
     if (!busqueda.trim()) return lista;
     const b = busqueda.toLowerCase();
@@ -196,11 +191,10 @@ export function SellersTable() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3">
-      {/* ======== HEADER ======== */}
       <div className="p-6 pb-0">
-        <div className="flex items-center justify-between gap-6 mb-4">
-          {/* Buscador */}
-          <div className="relative flex-1 max-w-md">
+        <div className="flex sm:flex-row flex-col  gap-3  items-center justify-between sm:gap-6 mb-4">
+          
+          <div className="relative flex-1 w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
@@ -211,12 +205,11 @@ export function SellersTable() {
             />
           </div>
 
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200 dark:border-neutral-700">
+          <div className="flex border-b border-gray-200 justify-between w-full sm:w-fit sm:justify-end dark:border-neutral-700">
             {/* Activos */}
             <button
               onClick={() => setTabActiva("activos")}
-              className={`px-6 py-3 border-b-2 transition-all flex items-center gap-2 ${
+              className={`sm:px-6 py-3 border-b-2 transition-all flex items-center gap-2 ${
                 tabActiva === "activos"
                   ? "border-teal-500 text-teal-600 dark:text-teal-400"
                   : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -225,7 +218,7 @@ export function SellersTable() {
               <Users className="w-5 h-5" />
               Vendedores
               <span
-                className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                className={`ml-1 px-2 py-0.5 sm:block hidden rounded-full text-xs ${
                   tabActiva === "activos"
                     ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-200"
                     : "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-300"
@@ -238,7 +231,7 @@ export function SellersTable() {
             {/* Solicitudes */}
             <button
               onClick={() => setTabActiva("solicitudes")}
-              className={`px-6 py-3 border-b-2 transition-all flex items-center gap-2 ${
+              className={`sm:px-6 py-3 border-b-2 transition-all flex items-center gap-2 ${
                 tabActiva === "solicitudes"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -247,7 +240,7 @@ export function SellersTable() {
               <UserPlus className="w-5 h-5" />
               Solicitudes
               <span
-                className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                className={`ml-1 px-2 py-0.5 sm:block hidden rounded-full text-xs ${
                   tabActiva === "solicitudes"
                     ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200"
                     : "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-300"
