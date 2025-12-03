@@ -1,5 +1,6 @@
 import React from "react";
 import { SellersTable } from "./components/SellersTable";
+import { BranchesVehiclesTable } from "./components/BranchesVehiclesTable";
 
 export default function AdminDashboard() {
   return (
@@ -18,6 +19,9 @@ export default function AdminDashboard() {
 
         <div className="col-span-12 mt-6">
           <SellersTable />
+        </div>
+        <div className="col-span-12 mt-6">
+          <BranchesVehiclesTable />
         </div>
       </div>
     </div>
