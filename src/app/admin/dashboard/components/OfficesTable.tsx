@@ -69,11 +69,11 @@ export function OfficesTable() {
       {/* Header */}
       <div className="p-6 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-500" />
+          <Building2 className="w-6 h-6  sm:block hidden  text-blue-600 dark:text-blue-500" />
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
             Gestión de Sucursales
           </h2>
-          <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">
+          <span className="px-2 py-1  sm:block hidden  text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">
             {totalItems} total
           </span>
         </div>
