@@ -86,3 +86,64 @@ export async function getOrders({
     totalPages: Math.ceil(totalCount / pageSize),
   };
 }
+
+export async function getOrdersById({
+  sellerId,
+  page = 1,
+  pageSize = 5,
+}: {
+  sellerId: number;
+  page?: number;
+  pageSize?: number;
+}) {
+  const where = {
+    producto: {
+      sellerId: sellerId,
+    },
+  };
+
+  const totalCount = await prisma.pedidoProducto.count({
+    where,
+  });
+
+  const soldItems = await prisma.pedidoProducto.findMany({
+    where,
+    include: {
+      producto: {
+        include: {
+          images: {
+            select: {
+              id: true,
+              url: true,
+              orden: true,
+            },
+          },
+          category: true,
+        },
+      },
+      pedido: true,
+    },
+    orderBy: {
+      pedido: {
+        fecha: "desc",
+      },
+    },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+
+  const orders = soldItems.map((item) => ({
+    id: item.id,
+    producto: item.producto.nombre,
+    categoria: item.producto.category?.name ?? "N/A",
+    precio: item.pedido.total.toNumber(),
+    status: item.pedido.status,
+    images: item.producto.images,
+    fecha: item.pedido.fecha,
+  }));
+
+  return {
+    orders,
+    totalPages: Math.ceil(totalCount / pageSize),
+  };
+}

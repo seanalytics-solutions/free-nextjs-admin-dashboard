@@ -579,3 +579,235 @@ export async function getSalesData(
 
   return { sales, revenue, categories };
 }
+
+export async function getProductsById({
+  sellerId,
+  page,
+  pageSize = 5,
+  search = "",
+  brand = "",
+  status = "",
+}: {
+  sellerId: number;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  brand?: string;
+  status?: string;
+}): Promise<{ products: Product[]; totalPages: number }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { products: [], totalPages: 0 };
+  }
+
+  const where: any = {
+    sellerId: sellerId,
+  };
+
+  if (search) {
+    where.OR = [
+      { nombre: { contains: search, mode: "insensitive" } },
+      { sku: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (brand && brand !== "all") {
+    where.marca = brand;
+  }
+
+  if (status && status !== "all") {
+    if (status === "active") {
+      where.estado = true;
+    } else if (status === "inactive") {
+      where.estado = false;
+    }
+  }
+
+  const totalPages = await prisma.product.count({
+    where,
+  });
+
+  const products = await prisma.product.findMany({
+    where,
+    take: pageSize,
+    skip: page ? (page - 1) * pageSize : 0,
+    include: {
+      _count: {
+        select: {
+          pedidoProductos: true,
+        },
+      },
+      images: {
+        select:{
+          url: true,
+          orden: true,  
+          id: true,
+        }
+      }
+    },
+
+    orderBy: {
+      id: "asc",
+    },
+  });
+  const formattedProducts = products.map((product) => ({
+    ...product,
+    precio: product.precio.toNumber(),
+    pedidoProductosCount: product._count.pedidoProductos,
+  }));
+
+  return {products: formattedProducts, totalPages: Math.ceil(totalPages / pageSize)};
+}
+
+export async function getCustomersCountById(sellerId: number): Promise<number> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return 0;
+  }
+
+  const clientesUnicos = await prisma.profile.count({
+    where: {
+      pedidos: {
+        some: {
+          productos: {
+            some: {
+              producto: {
+                sellerId: sellerId
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  return clientesUnicos;
+}
+
+export async function getOrdersCountById(sellerId: number): Promise<number> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return 0;
+  }
+  const ordersCount = await prisma.pedido.count({
+    where: {
+      productos: {
+        some: {
+          producto: {
+            sellerId: sellerId
+          }
+        }
+      }
+    }
+  });
+  return ordersCount;
+}
+
+export async function getSalesDataById(
+  sellerId: number,
+  period: 'weekly' | 'monthly' | 'yearly',
+  year?: number,
+  month?: number
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { sales: [], revenue: [], categories: [] };
+  }
+
+  const today = new Date();
+  const currentYear = year || today.getFullYear();
+  const currentMonth = month !== undefined ? month : today.getMonth();
+  
+  let startDate: Date;
+  let endDate: Date;
+  let categories: string[] = [];
+  let sales: number[] = [];
+  let revenue: number[] = [];
+
+  if (period === 'weekly') {
+    // Start of week (Monday)
+    const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+    const diffToMonday = (dayOfWeek + 6) % 7;
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() - diffToMonday);
+    startDate.setHours(0, 0, 0, 0);
+    
+    endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 7);
+
+    categories = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+    sales = new Array(7).fill(0);
+    revenue = new Array(7).fill(0);
+
+  } else if (period === 'monthly') {
+    // Start of selected month
+    startDate = new Date(currentYear, currentMonth, 1);
+    endDate = new Date(currentYear, currentMonth + 1, 1);
+    
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    categories = Array.from({ length: daysInMonth }, (_, i) => {
+      const year = currentYear;
+      const month = String(currentMonth + 1).padStart(2, '0');
+      const day = String(i + 1).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    });
+    sales = new Array(daysInMonth).fill(0);
+    revenue = new Array(daysInMonth).fill(0);
+
+  } else { // yearly
+    startDate = new Date(currentYear, 0, 1);
+    endDate = new Date(currentYear + 1, 0, 1);
+    categories = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    sales = new Array(12).fill(0);
+    revenue = new Array(12).fill(0);
+  }
+
+  const salesData = await prisma.pedidoProducto.findMany({
+    where: {
+      producto: {
+        sellerId: sellerId,
+      },
+      pedido: {
+        fecha: {
+          gte: startDate,
+          lt: endDate,
+        },
+      },
+    },
+    select: {
+      cantidad: true,
+      producto: {
+        select: {
+          precio: true,
+        },
+      },
+      pedido: {
+        select: {
+          fecha: true,
+        },
+      },
+    },
+  });
+
+  salesData.forEach((item) => {
+    const date = new Date(item.pedido.fecha);
+    let index = -1;
+
+    if (period === 'weekly') {
+      const day = date.getDay(); // 0 (Sun) - 6 (Sat)
+      // Convert to 0 (Mon) - 6 (Sun)
+      index = (day + 6) % 7;
+    } else if (period === 'monthly') {
+      index = date.getDate() - 1; // 1-31 -> 0-30
+    } else { // yearly
+      index = date.getMonth(); // 0-11
+    }
+
+    if (index >= 0 && index < sales.length) {
+      sales[index] += item.cantidad;
+      // @ts-ignore
+      revenue[index] += item.cantidad * Number(item.producto.precio);
+    }
+  });
+
+  return { sales, revenue, categories };
+}
