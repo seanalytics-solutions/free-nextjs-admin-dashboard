@@ -18,6 +18,8 @@ import ExpandableInput from "../ui/expandable-input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSidebar } from "@/context/SidebarContext";
 import { useRouter } from "next/navigation";
+import { useFileViewer } from "@/context/FileViewerContext";
+import { Eye } from "lucide-react";
 
 export default function GuiaTable() {
   const [page, setPage] = useState(1);
@@ -25,6 +27,7 @@ export default function GuiaTable() {
   const { isMobile } = useSidebar();
   const debouncedSearch = useDebounce(search, 500);
   const router = useRouter();
+  const { openFile } = useFileViewer();
 
   const { data, error, isPending, isFetching } = useQuery({
     queryKey: ["guias", page, debouncedSearch],
@@ -75,7 +78,7 @@ export default function GuiaTable() {
       <div className="max-w-full flex-1 flex flex-col justify-between overflow-x-auto ">
         <Table className="h-full">
           {/* Table Header */}
-          <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
+          <TableHeader className="border-gray-100 dark:border-gray-800 border-b">
             <TableRow>
               <TableCell className="py-3 min-w-44 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                 Rastreo
@@ -91,6 +94,9 @@ export default function GuiaTable() {
               </TableCell>
               <TableCell className="py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
                 Entrega Estimada
+              </TableCell>
+              <TableCell className="py-3 font-medium text-gray-500 text-center text-theme-xs dark:text-gray-400">
+                Acciones
               </TableCell>
             </TableRow>
           </TableHeader>
@@ -143,6 +149,27 @@ export default function GuiaTable() {
                       ? new Date(guia.fecha_entrega_estimada).toLocaleDateString()
                       : "Pendiente"}
                   </TableCell>
+                  <TableCell className="py-3 text-gray-500 text-center text-theme-sm dark:text-gray-400">
+                    {guia.key_pdf && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFile({
+                            id: guia.numero_de_rastreo,
+                            url: `/api/proxy-pdf?url=${encodeURIComponent(
+                              `https://correos-storage.emmanuelbayona.dev/${guia.key_pdf}`
+                            )}`,
+                            name: `${guia.numero_de_rastreo}.pdf`,
+                            fileType: "pdf",
+                          });
+                        }}
+                        className="p-2 hover:bg-gray-100 rounded-full dark:hover:bg-white/10 transition-colors"
+                        title="Ver PDF"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             {data?.guias && data.guias.length === 0 && (
@@ -154,16 +181,17 @@ export default function GuiaTable() {
             )}
           </TableBody>
         </Table>
-        <div className="absolute left-1/2 bottom-8 md:bottom-4 transform -translate-x-1/2 md:self-end md:flex md:justify-end md:w-full md:pr-6">
-          <Pagination
-            currentPage={page}
-            totalPages={data ? data.totalPages : 10}
-            onPageChange={(newPage) => {
-              setPage(newPage);
-            }}
-          />
-        </div>
       </div>
-    </div>
+
+      <div className="mt-3 flex justify-center md:justify-end w-full md:pr-6">
+        <Pagination
+          currentPage={page}
+          totalPages={data ? data.totalPages : 10}
+          onPageChange={(newPage) => {
+            setPage(newPage);
+          }}
+        />
+      </div>
+      </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
+import FileViewerContainer from '@/components/FileViewerContainer';
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -28,7 +29,14 @@ export default function RootLayout({
       <Providers> 
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
-            <SidebarProvider>{children}</SidebarProvider>
+            <SidebarProvider>
+              <div className="flex h-screen overflow-hidden">
+                <div className="flex-1 flex flex-col h-full overflow-hidden relative overflow-y-auto">
+                  {children}
+                </div>
+                <FileViewerContainer />
+              </div>
+            </SidebarProvider>
             <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>
         </ThemeProvider>
