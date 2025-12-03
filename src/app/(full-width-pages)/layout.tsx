@@ -10,7 +10,6 @@ export default function FullWidthPageLayout({
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
-  console.log(theme);
   return <ThemeProvider>
     <div>
       {children}  

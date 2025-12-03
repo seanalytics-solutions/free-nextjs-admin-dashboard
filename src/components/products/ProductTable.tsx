@@ -26,6 +26,7 @@ import { FilterIcon } from "lucide-react";
 import Image from "next/image";
 import EditProductDialog from "./EditProductDialog";
 import DeleteProductDialog from "./DeleteProductDialog";
+import { useSession } from "next-auth/react";
 
 const statusOptions = [
   { value: "all", label: "Todos los estados" },
@@ -43,7 +44,8 @@ export default function ProductTable() {
   const [status, setStatus] = useState<StatusValue>(statusOptions[0].value);
   const { isMobile } = useSidebar();
   const debouncedSearch = useDebounce(search, 500);
-
+  const { data: session } = useSession();
+  const role = session?.user?.role;
   const { data: brands } = useQuery({
     queryKey: ["product-brands"],
     queryFn: getUniqueBrands,
@@ -204,7 +206,10 @@ export default function ProductTable() {
             </PopoverContent>
             </Popover>
           )}
+
+          {role === 'vendedor' && (
           <AddProductDialog />
+          )}
 
         </div>
         
@@ -258,11 +263,13 @@ export default function ProductTable() {
               >
                 Pedidos
               </TableCell>
+              {role === 'vendedor' && (
               <TableCell
                 className="py-3 font-medium text-gray-500 text-end text-theme-xs dark:text-gray-400"
               >
                 Acciones
               </TableCell>
+              )}
             </TableRow>
           </TableHeader>
             
@@ -317,12 +324,15 @@ export default function ProductTable() {
                 <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
                   {product.pedidoProductosCount || 0}
                 </TableCell>
+
+                {role === 'vendedor' && (
                 <TableCell className="py-3 text-end text-gray-500 text-theme-sm dark:text-gray-400">
                   <div className="flex items-center justify-end gap-2">
                     <EditProductDialog product={product} />
                     <DeleteProductDialog productId={product.id} />
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             ))} 
             {
